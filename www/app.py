@@ -2,6 +2,7 @@ import asyncio
 from aiohttp import web
 import logging
 
+logging.basicConfig(level = logging.INFO)
 address = '127.0.0.1'
 port = 18080
 
