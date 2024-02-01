@@ -1,4 +1,5 @@
 import logging
+import pdb
 from typing import Any
 import aiomysql
 
@@ -61,12 +62,11 @@ class Field(object):
         return '<Field Type: %s Name: %s>' % (self.column_type, self.name)
 
 
-class IntField(Field):
-    def __init__(self, name = None, column_type = 'INT', primary_key = False, default = None):
+class IntegerField(Field):
+    def __init__(self, name = None, column_type = 'bigint', primary_key = False, default = None):
         super().__init__(name, column_type, primary_key, default)
 
 class StringField(Field):
-    
     def __init__(self, name = None, column_type = 'varchar(100)', primary_key = False, default = None):
         super().__init__(name, column_type, primary_key, default)
 
@@ -129,6 +129,9 @@ class Model(dict, metaclass = ModelMetaclass):
     def __setattr__(self, key, value):
         self[key] = value
 
+    def getValue(self, key):
+        return getattr(self, key, None)
+    
     def getValueOrDefault(self, key):
         value = getattr(self, key, None)
         if value is None:
@@ -138,7 +141,27 @@ class Model(dict, metaclass = ModelMetaclass):
                 logging.debug('using default value for %s: %s' % (key, str(value)))
                 setattr(self, key, value)
         return value
-
+        
+    async def save(self):
+        args = list(map(self.getValueOrDefault, self.__other_fields__))
+        args.append(self.getValueOrDefault(self.__primary_key__))
+        affected = await modify(self.__insert__, args)
+        if affected != 1:
+            logging.warn('failed to insert record: affected rows: %d' % affected)
+    
+    async def update(self):
+        args = list(map(self.getValue, self.__other_fields__))
+        args.append(self.getValue(self.__primary_key__))
+        affected = await modify(self.__update__, args)
+        if affected != 1:
+            logging.warn('failed to update record: affected rows: %d' % affected)
+            
+    async def remove(self):
+        args = [self.getValue(self.__primary_key__)]
+        affected = await modify(self.__delete__, args)
+        if affected != 1:
+            logging.warn('failed to remove record: affected rows: %d' % affected)
+    
     @classmethod
     async def find(cls, pk):
         result = await select('%s where `%s`=?' % (cls.__select__, cls.__primary_key__), [pk], 1)
@@ -147,11 +170,33 @@ class Model(dict, metaclass = ModelMetaclass):
         else:
             return cls(**result[0])
         
-    async def save(self):
-        args = list(map(self.getValueOrDefault, self.__other_fields__))
-        args.append(self.getValueOrDefault(self.__primary_key__))
-        affected = await modify(self.__insert__, args)
-        if affected != 1:
-            logging.warn('failed to insert record: affected rows: %d' % affected)
-
-
+    @classmethod
+    async def findAll(cls, where = None, args = None, order_by = None, limit = None):
+        sql = cls.__select__
+        if args is None:
+            args = []
+        if where:
+            sql += ' where ' + where
+        if order_by:
+            sql += ' order by ' + order_by
+        if limit:
+            if not isinstance(limit, int):
+                raise ValueError('Invalid limit number: %s' % limit)
+            else:
+                sql += 'limit ?'
+                args.append(limit)
+        result = await select(sql, args)
+        return [cls(**r) for r in result]
+        
+    @classmethod
+    async def findNumber(cls, count, where = None, args = None):
+        sql = 'select %s as num from `%s`' % (count, cls.__table__)
+        if args is None:
+            args = []
+        if where:
+            sql += ' where ' + where
+        result = await select(sql, args, 1)
+        if len(result) == 0:
+            return None
+        else:
+            return result[0]['num']
