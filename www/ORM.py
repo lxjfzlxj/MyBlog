@@ -71,7 +71,7 @@ class StringField(Field):
         super().__init__(name, column_type, primary_key, default)
 
 class BooleanField(Field):
-    def __init__(self, name = None, column_type = 'boolean', primary_key = False, default = None):
+    def __init__(self, name = None, column_type = 'boolean', primary_key = False, default = False):
         super().__init__(name, column_type, primary_key, default)
         
 class FloatField(Field):
