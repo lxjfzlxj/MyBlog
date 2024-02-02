@@ -70,7 +70,19 @@ class StringField(Field):
     def __init__(self, name = None, column_type = 'varchar(100)', primary_key = False, default = None):
         super().__init__(name, column_type, primary_key, default)
 
+class BooleanField(Field):
+    def __init__(self, name = None, column_type = 'boolean', primary_key = False, default = None):
+        super().__init__(name, column_type, primary_key, default)
+        
+class FloatField(Field):
+    def __init__(self, name = None, column_type = 'real', primary_key = False, default = None):
+        super().__init__(name, column_type, primary_key, default)
 
+class TextField(Field):
+    def __init__(self, name = None, column_type = 'text', primary_key = False, default = None):
+        super().__init__(name, column_type, primary_key, default)
+        
+        
 def create_args_string(num):
     L = []
     for i in range(num):
